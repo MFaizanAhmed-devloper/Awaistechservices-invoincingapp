@@ -54,6 +54,8 @@ const KEYS = {
   CLIENTS: "invoice_app_clients",
   INVOICES: "invoice_app_invoices",
   VERSION: "invoice_app_version",
+  AUTH_HASH: "invoice_app_auth_hash",
+  SESSION: "invoice_app_session",
 };
 
 const CURRENT_VERSION = "2";
@@ -141,6 +143,56 @@ export function deleteInvoice(id: string) {
   const invoices = getInvoices().filter((i) => i.id !== id);
   localStorage.setItem(KEYS.INVOICES, JSON.stringify(invoices));
 }
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+
+async function sha256(text: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+const DEFAULT_PASSWORD = "admin123";
+
+export async function initAuth() {
+  if (!localStorage.getItem(KEYS.AUTH_HASH)) {
+    const hash = await sha256(DEFAULT_PASSWORD);
+    localStorage.setItem(KEYS.AUTH_HASH, hash);
+  }
+}
+
+export async function verifyPassword(password: string): Promise<boolean> {
+  const stored = localStorage.getItem(KEYS.AUTH_HASH);
+  if (!stored) return false;
+  const hash = await sha256(password);
+  return hash === stored;
+}
+
+export async function changePassword(newPassword: string): Promise<void> {
+  const hash = await sha256(newPassword);
+  localStorage.setItem(KEYS.AUTH_HASH, hash);
+}
+
+export function setSession(remember: boolean) {
+  const token = crypto.randomUUID();
+  if (remember) {
+    localStorage.setItem(KEYS.SESSION, token);
+    sessionStorage.removeItem(KEYS.SESSION);
+  } else {
+    sessionStorage.setItem(KEYS.SESSION, token);
+    localStorage.removeItem(KEYS.SESSION);
+  }
+}
+
+export function hasSession(): boolean {
+  return !!(localStorage.getItem(KEYS.SESSION) || sessionStorage.getItem(KEYS.SESSION));
+}
+
+export function clearSession() {
+  localStorage.removeItem(KEYS.SESSION);
+  sessionStorage.removeItem(KEYS.SESSION);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export function getNextInvoiceNumber(): string {
   const profile = getBusinessProfile();

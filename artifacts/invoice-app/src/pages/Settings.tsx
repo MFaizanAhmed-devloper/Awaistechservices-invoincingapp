@@ -1,5 +1,6 @@
 import { useApp } from "@/contexts/AppContext";
-import { getInvoices, getClients, getBusinessProfile, saveBusinessProfile, BusinessProfile } from "@/lib/storage";
+import { useAuth } from "@/contexts/AuthContext";
+import { getInvoices, getClients, getBusinessProfile, saveBusinessProfile, BusinessProfile, changePassword } from "@/lib/storage";
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Save, Upload, Download, RefreshCw, Trash2, Building2, CreditCard, FileText, Database } from "lucide-react";
+import { Save, Upload, Download, RefreshCw, Trash2, Building2, CreditCard, FileText, Database, ShieldCheck, LogOut } from "lucide-react";
 import { toast } from "sonner";
 
 const CURRENCIES = [
@@ -23,9 +24,12 @@ const CURRENCIES = [
 
 export default function Settings() {
   const { profile, refreshData } = useApp();
+  const { logout } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<BusinessProfile>({ ...profile });
+  const [pwForm, setPwForm] = useState({ current: "", newPw: "", confirm: "" });
+  const [pwLoading, setPwLoading] = useState(false);
 
   const handleChange = (field: keyof BusinessProfile, value: string | number) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -95,6 +99,20 @@ export default function Settings() {
     setForm(newProfile);
     refreshData();
     toast.success("All data cleared");
+  };
+
+  const handleChangePassword = async () => {
+    if (!pwForm.current) { toast.error("Enter your current password"); return; }
+    if (pwForm.newPw.length < 6) { toast.error("New password must be at least 6 characters"); return; }
+    if (pwForm.newPw !== pwForm.confirm) { toast.error("Passwords don't match"); return; }
+    setPwLoading(true);
+    const { verifyPassword } = await import("@/lib/storage");
+    const ok = await verifyPassword(pwForm.current);
+    if (!ok) { setPwLoading(false); toast.error("Current password is incorrect"); return; }
+    await changePassword(pwForm.newPw);
+    setPwLoading(false);
+    setPwForm({ current: "", newPw: "", confirm: "" });
+    toast.success("Password changed successfully");
   };
 
   return (
@@ -268,6 +286,56 @@ export default function Settings() {
           <Save className="mr-2 h-4 w-4" /> Save Settings
         </Button>
       </div>
+
+      {/* Security */}
+      <Card className="crystal-card border-0">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 bg-primary/10 rounded-lg flex items-center justify-center">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle>Security</CardTitle>
+              <CardDescription>Change your login password or sign out</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="curPw">Current Password</Label>
+              <Input id="curPw" type="password" value={pwForm.current}
+                onChange={e => setPwForm(p => ({ ...p, current: e.target.value }))}
+                placeholder="Enter current password" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="newPw">New Password</Label>
+                <Input id="newPw" type="password" value={pwForm.newPw}
+                  onChange={e => setPwForm(p => ({ ...p, newPw: e.target.value }))}
+                  placeholder="Min 6 characters" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPw">Confirm Password</Label>
+                <Input id="confirmPw" type="password" value={pwForm.confirm}
+                  onChange={e => setPwForm(p => ({ ...p, confirm: e.target.value }))}
+                  placeholder="Re-enter new password" />
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center justify-between pt-1">
+            <Button variant="outline" onClick={handleChangePassword} disabled={pwLoading}>
+              <ShieldCheck className="mr-2 h-4 w-4" />
+              {pwLoading ? "Changing…" : "Change Password"}
+            </Button>
+            <Button variant="ghost" onClick={logout}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10">
+              <LogOut className="mr-2 h-4 w-4" /> Sign Out
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">Default password on first use: <span className="font-mono font-semibold">admin123</span></p>
+        </CardContent>
+      </Card>
 
       <Separator />
 
