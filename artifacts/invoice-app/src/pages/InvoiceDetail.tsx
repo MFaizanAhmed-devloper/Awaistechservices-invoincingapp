@@ -1,32 +1,61 @@
 import { useApp } from "@/contexts/AppContext";
 import { saveInvoice } from "@/lib/storage";
 import { calculateInvoiceTotals, calculateLineItemTotals, formatCurrency } from "@/lib/calculations";
-import { generateWhatsAppLink, generateGmailLink } from "@/lib/pdf";
+import { generateWhatsAppLink, generateGmailLink, downloadInvoicePDF } from "@/lib/pdf";
 import { useLocation, useParams } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Edit, Printer, MessageCircle, CheckCircle, Mail } from "lucide-react";
+import { ArrowLeft, Edit, Printer, MessageCircle, CheckCircle, Mail, Loader2 } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { useState } from "react";
 
 const TEAL = "#4BBFC0";
 const ORANGE = "#F5A624";
 const DARK = "#1A2B4B";
 
-function DiagonalStripes({ color = ORANGE, count = 3 }: { color?: string; count?: number }) {
+function CornerStripes({ position = "top-right" }: { position?: "top-right" | "bottom-right" }) {
+  const stripes = [
+    { width: 18, opacity: 0.7 },
+    { width: 14, opacity: 0.85 },
+    { width: 10, opacity: 1 },
+  ];
+  const isTop = position === "top-right";
   return (
-    <div className="flex gap-1.5 items-center">
-      {Array.from({ length: count }).map((_, i) => (
-        <div
-          key={i}
-          style={{
-            width: 14,
-            height: 48,
-            background: color,
-            transform: "skewX(-15deg)",
-            opacity: 0.85 + i * 0.05,
-          }}
-        />
+    <div style={{
+      position: "absolute",
+      ...(isTop ? { top: 0, right: 0 } : { bottom: 0, right: 0 }),
+      display: "flex",
+      gap: 5,
+      alignItems: isTop ? "flex-start" : "flex-end",
+      overflow: "hidden",
+      pointerEvents: "none",
+    }}>
+      {stripes.map((s, i) => (
+        <div key={i} style={{
+          width: s.width,
+          height: isTop ? 72 : 64,
+          background: ORANGE,
+          transform: "skewX(-12deg)",
+          opacity: s.opacity,
+          transformOrigin: isTop ? "top center" : "bottom center",
+        }} />
+      ))}
+    </div>
+  );
+}
+
+function OrangeStripes() {
+  return (
+    <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+      {[0.6, 0.8, 1].map((op, i) => (
+        <div key={i} style={{
+          width: 14,
+          height: 26,
+          background: "rgba(255,255,255,0.55)",
+          transform: "skewX(-12deg)",
+          opacity: op,
+        }} />
       ))}
     </div>
   );
@@ -36,6 +65,7 @@ export default function InvoiceDetail() {
   const { invoices, clients, profile, refreshData } = useApp();
   const [, setLocation] = useLocation();
   const params = useParams<{ id: string }>();
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const invoice = invoices.find((i) => i.id === params.id);
   const client = invoice ? clients.find((c) => c.id === invoice.clientId) : null;
@@ -50,7 +80,7 @@ export default function InvoiceDetail() {
   }
 
   const totals = calculateInvoiceTotals(invoice.lineItems);
-  const MAX_ROWS = 7;
+  const MAX_ROWS = 6;
   const paddedItems = [
     ...invoice.lineItems,
     ...Array.from({ length: Math.max(0, MAX_ROWS - invoice.lineItems.length) }, () => null),
@@ -67,15 +97,27 @@ export default function InvoiceDetail() {
     window.open(generateWhatsAppLink(invoice, client, profile), "_blank");
   };
 
-  const handleGmail = () => {
+  const handleGmail = async () => {
     if (!client) { toast.error("Client not found"); return; }
     if (!client.email) { toast.error("Client has no email address"); return; }
-    window.open(generateGmailLink(invoice, client, profile), "_blank");
+    setPdfLoading(true);
+    try {
+      toast.info("Generating PDF…", { duration: 2000 });
+      await downloadInvoicePDF(invoice.invoiceNumber);
+      window.open(generateGmailLink(invoice, client, profile), "_blank");
+      toast.success("PDF saved! Attach it to the Gmail that just opened.", { duration: 6000 });
+    } catch {
+      toast.error("PDF generation failed");
+    } finally {
+      setPdfLoading(false);
+    }
   };
+
+  const handlePrint = () => window.print();
 
   return (
     <div className="space-y-4 max-w-3xl">
-      {/* Action bar */}
+      {/* ── Action bar ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => setLocation("/invoices")}>
@@ -94,19 +136,22 @@ export default function InvoiceDetail() {
         <div className="flex flex-wrap gap-2">
           {invoice.status !== "paid" && (
             <Button variant="outline" size="sm" onClick={handleMarkPaid}
-              className="text-green-600 border-green-300 hover:bg-green-50 dark:hover:bg-green-950"
+              className="text-green-600 border-green-300 hover:bg-green-50"
               data-testid="button-mark-paid">
               <CheckCircle className="mr-1.5 h-4 w-4" /> Mark Paid
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={handleGmail} data-testid="button-gmail"
-            className="text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-950/30">
-            <Mail className="mr-1.5 h-4 w-4" /> Gmail
+          <Button variant="outline" size="sm" onClick={handleGmail} disabled={pdfLoading}
+            className="text-red-600 border-red-200 hover:bg-red-50"
+            data-testid="button-gmail">
+            {pdfLoading
+              ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Generating…</>
+              : <><Mail className="mr-1.5 h-4 w-4" /> Gmail</>}
           </Button>
           <Button variant="outline" size="sm" onClick={handleWhatsApp} data-testid="button-whatsapp">
             <MessageCircle className="mr-1.5 h-4 w-4" /> WhatsApp
           </Button>
-          <Button variant="outline" size="sm" onClick={() => window.print()} data-testid="button-print">
+          <Button variant="outline" size="sm" onClick={handlePrint} data-testid="button-print">
             <Printer className="mr-1.5 h-4 w-4" /> Print / PDF
           </Button>
           <Button size="sm" onClick={() => setLocation(`/invoices/${invoice.id}/edit`)} data-testid="button-edit-invoice">
@@ -118,231 +163,243 @@ export default function InvoiceDetail() {
       {/* ══ INVOICE DOCUMENT ══ */}
       <div
         id="invoice-document"
-        className="bg-white dark:bg-white rounded-xl overflow-hidden shadow-2xl border border-gray-200"
-        style={{ fontFamily: "'Inter', sans-serif", color: DARK }}
+        style={{
+          fontFamily: "'Inter', 'Helvetica Neue', Arial, sans-serif",
+          color: DARK,
+          background: "#fff",
+          borderRadius: 12,
+          overflow: "hidden",
+          boxShadow: "0 8px 40px rgba(0,0,0,0.13)",
+          border: "1px solid #e5e7eb",
+          width: "100%",
+        }}
       >
-
-        {/* ── HEADER ── */}
+        {/* ── TEAL HEADER ── */}
         <div style={{ background: TEAL, position: "relative", overflow: "hidden" }}>
-          <div className="flex items-center justify-between px-6 pt-5 pb-0">
-            {/* Left: logo + name */}
-            <div className="flex items-center gap-3">
+          {/* Corner stripes top-right */}
+          <CornerStripes position="top-right" />
+
+          {/* Top row: logo + name | INVOICE */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px 0 24px" }}>
+            {/* Left: logo + business name */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               {profile.logo ? (
-                <img src={profile.logo} alt={profile.name} className="h-14 w-14 object-contain rounded-full bg-white/20 p-1" />
+                <img
+                  src={profile.logo}
+                  alt={profile.name}
+                  style={{ height: 52, width: 52, borderRadius: "50%", border: "2.5px solid rgba(255,255,255,0.7)", objectFit: "contain", background: "rgba(255,255,255,0.15)", padding: 2 }}
+                />
               ) : (
-                <div className="h-14 w-14 rounded-full border-2 border-white/60 bg-white/20 flex items-center justify-center text-white font-black text-xl">
+                <div style={{
+                  height: 52, width: 52, borderRadius: "50%",
+                  border: "2.5px solid rgba(255,255,255,0.7)",
+                  background: "rgba(255,255,255,0.18)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 22, fontWeight: 900, color: "#fff",
+                }}>
                   {profile.name.charAt(0)}
                 </div>
               )}
               <div>
-                <p className="font-black text-lg tracking-wide leading-tight" style={{ color: DARK }}>
-                  {profile.name.toUpperCase()}
+                <p style={{ margin: 0, fontWeight: 900, fontSize: 15, letterSpacing: "0.06em", color: DARK, lineHeight: 1.2 }}>
+                  <span style={{ color: DARK }}>{profile.name.split(" ")[0].toUpperCase()}</span>
+                  {" "}
+                  <span style={{ color: DARK, fontWeight: 900 }}>
+                    {profile.name.split(" ").slice(1).join(" ").toUpperCase()}
+                  </span>
                 </p>
               </div>
             </div>
-            {/* Right: INVOICE word */}
-            <div className="flex items-center gap-3">
-              <p className="font-black text-5xl tracking-widest" style={{ color: ORANGE, letterSpacing: "0.05em" }}>INVOICE</p>
-              <DiagonalStripes color={ORANGE} count={3} />
-            </div>
+
+            {/* Right: INVOICE label */}
+            <p style={{
+              margin: 0,
+              fontWeight: 900,
+              fontSize: 52,
+              color: ORANGE,
+              letterSpacing: "0.04em",
+              lineHeight: 1,
+              paddingRight: 72,
+            }}>
+              INVOICE
+            </p>
           </div>
 
-          {/* Invoice To / Invoice meta row */}
-          <div className="flex gap-6 px-6 pt-4 pb-5">
-            {/* Left: Bill To */}
-            <div className="flex-1">
-              <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: DARK }}>Invoice To:</p>
-              <div className="space-y-2">
-                <div>
-                  <p className="text-xs font-semibold" style={{ color: DARK }}>Name</p>
-                  <div className="border-b border-gray-400/60 pb-0.5 min-w-[160px]">
-                    <p className="text-sm font-medium text-gray-800">{client?.name || ""}</p>
+          {/* Bill To + Invoice meta */}
+          <div style={{ display: "flex", gap: 24, padding: "16px 24px 20px 24px" }}>
+            {/* Left: Invoice To */}
+            <div style={{ flex: 1 }}>
+              <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, color: DARK, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                Invoice To:
+              </p>
+              {[
+                { label: "Name", value: client?.name || "" },
+                { label: "Address", value: client?.address || "" },
+                { label: "ABN", value: client?.abn || "" },
+              ].map(({ label, value }) => (
+                <div key={label} style={{ marginBottom: 6 }}>
+                  <p style={{ margin: "0 0 1px", fontSize: 9, fontWeight: 600, color: DARK }}>{label}</p>
+                  <div style={{ borderBottom: "1.5px solid rgba(26,43,75,0.4)", minWidth: 170, paddingBottom: 2 }}>
+                    <p style={{ margin: 0, fontSize: 11, color: "#1e3a5f", fontWeight: 500, minHeight: 14 }}>{value}</p>
                   </div>
                 </div>
-                <div>
-                  <p className="text-xs font-semibold" style={{ color: DARK }}>Address</p>
-                  <div className="border-b border-gray-400/60 pb-0.5 min-w-[160px]">
-                    <p className="text-sm text-gray-700">{client?.address || ""}</p>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold" style={{ color: DARK }}>ABN</p>
-                  <div className="border-b border-gray-400/60 pb-0.5 min-w-[120px]">
-                    <p className="text-sm text-gray-700">{(client as any)?.abn || ""}</p>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
+
             {/* Right: Invoice meta */}
-            <div className="text-right space-y-2 min-w-[180px]">
-              <div className="flex justify-between gap-6 items-baseline">
-                <span className="text-xs font-bold" style={{ color: DARK }}>Invoice No:</span>
-                <div className="border-b border-gray-400/60 min-w-[80px] text-right">
-                  <span className="text-sm font-semibold">#{invoice.invoiceNumber}</span>
+            <div style={{ minWidth: 200 }}>
+              {[
+                { label: "Invoice No:", value: `#${invoice.invoiceNumber}` },
+                { label: "Due Date:", value: format(new Date(invoice.dueDate), "dd/MM/yyyy") },
+                { label: "Invoice Date:", value: format(new Date(invoice.invoiceDate), "dd/MM/yyyy") },
+              ].map(({ label, value }) => (
+                <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8, gap: 16 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: DARK, whiteSpace: "nowrap" }}>{label}</span>
+                  <div style={{ borderBottom: "1.5px solid rgba(26,43,75,0.4)", minWidth: 90, paddingBottom: 2, textAlign: "right" }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: "#1e3a5f" }}>{value}</span>
+                  </div>
                 </div>
-              </div>
-              <div className="flex justify-between gap-6 items-baseline">
-                <span className="text-xs font-bold" style={{ color: DARK }}>Due Date:</span>
-                <div className="border-b border-gray-400/60 min-w-[80px] text-right">
-                  <span className="text-sm">{format(new Date(invoice.dueDate), "dd/MM/yyyy")}</span>
-                </div>
-              </div>
-              <div className="flex justify-between gap-6 items-baseline">
-                <span className="text-xs font-bold" style={{ color: DARK }}>Invoice Date:</span>
-                <div className="border-b border-gray-400/60 min-w-[80px] text-right">
-                  <span className="text-sm">{format(new Date(invoice.invoiceDate), "dd/MM/yyyy")}</span>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
 
         {/* ── ORANGE BAND ── */}
-        <div style={{ background: ORANGE, height: 22, display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 16, overflow: "hidden" }}>
-          <DiagonalStripes color="rgba(255,255,255,0.25)" count={3} />
+        <div style={{ background: ORANGE, height: 28, display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 20 }}>
+          <OrangeStripes />
         </div>
 
         {/* ── PAYMENT METHOD ── */}
-        <div className="px-6 py-4 border-b border-gray-200">
-          <p className="font-black text-sm uppercase tracking-wider mb-2" style={{ color: DARK }}>Payment Method</p>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
-            <div className="flex gap-2">
-              <span className="text-gray-500 font-medium w-28 shrink-0">Account No:</span>
-              <span className="font-semibold">{profile.accountNo || "—"}</span>
-            </div>
-            <div className="flex gap-2">
-              <span className="text-gray-500 font-medium w-28 shrink-0">Account Name:</span>
-              <span className="font-semibold">{profile.accountName || "—"}</span>
-            </div>
-            <div className="flex gap-2">
-              <span className="text-gray-500 font-medium w-28 shrink-0">Bank</span>
-              <span className="font-semibold">{profile.bankName || "—"}</span>
-            </div>
+        <div style={{ padding: "12px 24px 14px", borderBottom: "1px solid #e5e7eb" }}>
+          <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 900, color: DARK, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Payment Method
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 24px", fontSize: 11 }}>
+            {[
+              ["Account No:", profile.accountNo || "—"],
+              ["Account Name:", profile.accountName || "—"],
+              ["Bank", profile.bankName || "—"],
+            ].map(([k, v]) => (
+              <div key={k} style={{ display: "flex", gap: 8 }}>
+                <span style={{ color: "#555", fontWeight: 500, minWidth: 96, flexShrink: 0 }}>{k}</span>
+                <span style={{ fontWeight: 700, color: DARK }}>{v}</span>
+              </div>
+            ))}
           </div>
         </div>
 
         {/* ── LINE ITEMS TABLE ── */}
-        <div className="px-6 py-4">
-          <table className="w-full text-sm">
+        <div style={{ padding: "0 24px" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
             <thead>
               <tr style={{ background: TEAL }}>
-                <th className="text-left px-4 py-2.5 font-black text-xs uppercase tracking-wider text-white w-[45%]">Description</th>
-                <th className="text-right px-4 py-2.5 font-black text-xs uppercase tracking-wider text-white w-[20%]">Price</th>
-                <th className="text-right px-4 py-2.5 font-black text-xs uppercase tracking-wider text-white w-[15%]">QTY</th>
-                <th className="text-right px-4 py-2.5 font-black text-xs uppercase tracking-wider text-white w-[20%]">Subtotal</th>
+                {["Description", "Price", "QTY", "Subtotal"].map((h, i) => (
+                  <th key={h} style={{
+                    padding: "10px 12px",
+                    fontWeight: 900,
+                    fontSize: 10,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.07em",
+                    color: "#fff",
+                    textAlign: i === 0 ? "left" : "right",
+                    width: i === 0 ? "45%" : i === 1 ? "20%" : i === 2 ? "15%" : "20%",
+                  }}>
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {paddedItems.map((item, idx) => {
                 const t = item ? calculateLineItemTotals(item) : null;
                 return (
-                  <tr key={idx} className="border-b border-gray-200">
-                    <td className="px-4 py-2.5 text-gray-800">
-                      {item ? (
-                        <div>
-                          <p className="font-medium">{item.description}</p>
-                        </div>
-                      ) : (
-                        <div className="border-b border-gray-300 w-full h-5" />
-                      )}
+                  <tr key={idx} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                    <td style={{ padding: "8px 12px", color: "#333" }}>
+                      {item
+                        ? <span style={{ fontWeight: 500 }}>{item.description}</span>
+                        : <div style={{ borderBottom: "1px solid #ccc", width: "70%", height: 14 }} />}
                     </td>
-                    <td className="px-4 py-2.5 text-right text-gray-700">
-                      {item ? (
-                        <span>A${item.rate.toFixed(2)}</span>
-                      ) : (
-                        <span className="text-gray-400">A$</span>
-                      )}
+                    <td style={{ padding: "8px 12px", textAlign: "right", color: "#555" }}>
+                      {item ? `A$${item.rate.toFixed(2)}` : <span style={{ color: "#aaa" }}>$___</span>}
                     </td>
-                    <td className="px-4 py-2.5 text-right text-gray-700">
-                      {item ? item.quantity : <span className="text-gray-300">—</span>}
+                    <td style={{ padding: "8px 12px", textAlign: "right", color: "#555" }}>
+                      {item ? item.quantity : <span style={{ color: "#bbb" }}>—</span>}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-semibold text-gray-800">
-                      {t ? (
-                        <span>A${t.net.toFixed(2)}</span>
-                      ) : (
-                        <span className="text-gray-400">A$</span>
-                      )}
+                    <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "#333" }}>
+                      {t ? `A$${t.net.toFixed(2)}` : <span style={{ color: "#aaa" }}>$___</span>}
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-
-          {/* Purple divider */}
-          <div className="mt-1 h-1 rounded-full" style={{ background: "linear-gradient(90deg, #7c3aed, #4f46e5)" }} />
+          {/* Purple gradient divider */}
+          <div style={{ height: 4, background: "linear-gradient(90deg, #7c3aed, #4f46e5)", borderRadius: 2, marginTop: 2 }} />
         </div>
 
         {/* ── FOOTER: TERMS + TOTALS ── */}
-        <div className="px-6 pb-6 flex gap-8 justify-between">
-          {/* Terms */}
-          <div className="flex-1 min-w-0">
-            <p className="font-black text-sm uppercase tracking-wider mb-2" style={{ color: DARK }}>Term and Conditions</p>
-            <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-line">
+        <div style={{ display: "flex", gap: 32, justifyContent: "space-between", padding: "16px 24px 0 24px", position: "relative" }}>
+          {/* Left: Terms */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 900, color: DARK, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Term and Conditions
+            </p>
+            <p style={{ margin: 0, fontSize: 9.5, color: "#555", lineHeight: 1.55, whiteSpace: "pre-line" }}>
               {profile.terms || "Payment due within 7 days of invoice date."}
             </p>
 
             {/* Contact info */}
-            <div className="mt-4 space-y-1.5">
-              {profile.phone && (
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 shrink-0 rounded-sm flex items-center justify-center text-white text-[8px]"
-                    style={{ background: ORANGE }}>
-                    ✆
+            <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 6 }}>
+              {[
+                { icon: "✆", value: profile.phone },
+                { icon: "@", value: profile.email },
+                { icon: "⌂", value: profile.address },
+              ].filter(x => x.value).map(({ icon, value }) => (
+                <div key={value} style={{ display: "flex", alignItems: "flex-start", gap: 7 }}>
+                  <div style={{
+                    height: 16, width: 16, borderRadius: 3, background: ORANGE,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 8, color: "#fff", flexShrink: 0, marginTop: 1,
+                  }}>
+                    {icon}
                   </div>
-                  <span className="text-xs text-gray-600">{profile.phone}</span>
+                  <span style={{ fontSize: 9.5, color: "#555", lineHeight: 1.4 }}>{value}</span>
                 </div>
-              )}
-              {profile.email && (
-                <div className="flex items-center gap-2">
-                  <div className="h-4 w-4 shrink-0 rounded-sm flex items-center justify-center text-white text-[8px]"
-                    style={{ background: ORANGE }}>
-                    @
-                  </div>
-                  <span className="text-xs text-gray-600">{profile.email}</span>
-                </div>
-              )}
-              {profile.address && (
-                <div className="flex items-start gap-2">
-                  <div className="h-4 w-4 shrink-0 rounded-sm flex items-center justify-center text-white text-[8px] mt-0.5"
-                    style={{ background: ORANGE }}>
-                    ⌂
-                  </div>
-                  <span className="text-xs text-gray-600">{profile.address}</span>
-                </div>
-              )}
+              ))}
             </div>
           </div>
 
-          {/* Totals */}
-          <div className="min-w-[200px]">
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between gap-8">
-                <span className="text-gray-600 font-medium">Sub-total:</span>
-                <span className="font-semibold">A${totals.subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between gap-8">
-                <span className="text-gray-600 font-medium">Discount:</span>
-                <span className="font-semibold">
-                  {totals.discountAmount > 0 ? `-A$${totals.discountAmount.toFixed(2)}` : "A$0.00"}
+          {/* Right: Totals */}
+          <div style={{ minWidth: 200 }}>
+            {[
+              { label: "Sub-total:", value: `A$${totals.subtotal.toFixed(2)}` },
+              { label: "Discount:", value: totals.discountAmount > 0 ? `-A$${totals.discountAmount.toFixed(2)}` : "A$0.00" },
+              { label: "Tax (10%):", value: `A$${totals.taxAmount.toFixed(2)}` },
+            ].map(({ label, value }) => (
+              <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: 32, marginBottom: 6, fontSize: 11 }}>
+                <span style={{ color: "#555", fontWeight: 500 }}>{label}</span>
+                <span style={{ fontWeight: 600, color: DARK }}>
+                  <span style={{ color: "#aaa", marginRight: 2 }}>$</span>
+                  {value.replace("A$", "").replace("-A$", "-")}
                 </span>
               </div>
-              <div className="flex justify-between gap-8">
-                <span className="text-gray-600 font-medium">Tax (10%):</span>
-                <span className="font-semibold">A${totals.taxAmount.toFixed(2)}</span>
-              </div>
-              <div className="border-t-2 pt-2 flex justify-between gap-8" style={{ borderColor: DARK }}>
-                <span className="font-black text-base" style={{ color: DARK }}>Total:</span>
-                <span className="font-black text-base" style={{ color: DARK }}>
-                  A${totals.total.toFixed(2)}
-                </span>
-              </div>
+            ))}
+            <div style={{ borderTop: `2.5px solid ${DARK}`, paddingTop: 6, display: "flex", justifyContent: "space-between", gap: 32 }}>
+              <span style={{ fontWeight: 900, fontSize: 13, color: DARK }}>Total:</span>
+              <span style={{ fontWeight: 900, fontSize: 13, color: DARK }}>
+                A${totals.total.toFixed(2)}
+              </span>
             </div>
 
-            {/* Bottom-right orange stripes */}
-            <div className="flex justify-end gap-1 mt-6">
-              <DiagonalStripes color={TEAL} count={2} />
-              <DiagonalStripes color={ORANGE} count={2} />
+            {/* Bottom-right corner stripes */}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 5, marginTop: 18, paddingBottom: 16 }}>
+              {[TEAL, TEAL, ORANGE, ORANGE].map((c, i) => (
+                <div key={i} style={{
+                  width: 14, height: 42, background: c,
+                  transform: "skewX(-12deg)",
+                  opacity: 0.7 + i * 0.08,
+                }} />
+              ))}
             </div>
           </div>
         </div>

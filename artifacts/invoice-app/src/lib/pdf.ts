@@ -1,6 +1,8 @@
 import { Client, Invoice, BusinessProfile } from "./storage";
 import { formatCurrency, calculateInvoiceTotals } from "./calculations";
 import { format } from "date-fns";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 export function generateWhatsAppLink(invoice: Invoice, client: Client, profile: BusinessProfile) {
   const totals = calculateInvoiceTotals(invoice.lineItems);
@@ -46,6 +48,28 @@ export function generateGmailLink(invoice: Invoice, client: Client, profile: Bus
 
   const params = new URLSearchParams({ to: client.email, su: subject, body });
   return `https://mail.google.com/mail/?view=cm&fs=1&${params.toString()}`;
+}
+
+export async function downloadInvoicePDF(invoiceNumber: string): Promise<void> {
+  const element = document.getElementById("invoice-document");
+  if (!element) throw new Error("Invoice element not found");
+
+  const canvas = await html2canvas(element, {
+    scale: 2,
+    useCORS: true,
+    allowTaint: true,
+    backgroundColor: "#ffffff",
+    logging: false,
+    windowWidth: element.scrollWidth,
+    windowHeight: element.scrollHeight,
+  });
+
+  const imgData = canvas.toDataURL("image/jpeg", 0.95);
+  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const pdfWidth = pdf.internal.pageSize.getWidth();
+  const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+  pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, Math.min(pdfHeight, pdf.internal.pageSize.getHeight()));
+  pdf.save(`${invoiceNumber}.pdf`);
 }
 
 export function handlePrint() {
