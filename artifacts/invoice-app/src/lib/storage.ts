@@ -3,11 +3,16 @@ export interface BusinessProfile {
   email: string;
   phone: string;
   address: string;
+  abn: string;
   logo: string;
   currency: string;
   invoicePrefix: string;
   nextInvoiceNumber: number;
   theme: "light" | "dark";
+  accountNo: string;
+  accountName: string;
+  bankName: string;
+  terms: string;
 }
 
 export interface Client {
@@ -17,6 +22,7 @@ export interface Client {
   email: string;
   phone: string;
   address: string;
+  abn: string;
   notes: string;
   createdAt: string;
 }
@@ -47,91 +53,53 @@ const KEYS = {
   PROFILE: "invoice_app_biz_profile",
   CLIENTS: "invoice_app_clients",
   INVOICES: "invoice_app_invoices",
+  VERSION: "invoice_app_version",
 };
 
+const CURRENT_VERSION = "2";
+
 const DEFAULT_PROFILE: BusinessProfile = {
-  name: "Awais Tech Services",
-  email: "hello@awaistech.com",
-  phone: "+61 400 000 000",
-  address: "123 Tech Lane, Sydney, NSW 2000",
+  name: "Awais Tech Services Pty Ltd",
+  email: "Awaisadil654@yahoo.com",
+  phone: "+61 405 037 476",
+  address: "10 Sanur St Marsden 4132 QLD AUSTRALIA",
+  abn: "",
   logo: "",
   currency: "AUD",
   invoicePrefix: "INV",
   nextInvoiceNumber: 1001,
   theme: "light",
+  accountNo: "723487772",
+  accountName: "AWAIS TECH SERVICES PTY LTD",
+  bankName: "NAB",
+  terms:
+    "Payment due within 7 days of invoice date.\nAll completed services are non-refundable.\nAdditional revisions may include extra charges.\nClients must provide accurate project details and approvals.\nAny invoice dispute must be reported within 3 days.",
 };
 
 export function initStorage() {
+  const storedVersion = localStorage.getItem(KEYS.VERSION);
+  if (storedVersion !== CURRENT_VERSION) {
+    localStorage.removeItem(KEYS.CLIENTS);
+    localStorage.removeItem(KEYS.INVOICES);
+    localStorage.removeItem(KEYS.PROFILE);
+    localStorage.setItem(KEYS.VERSION, CURRENT_VERSION);
+  }
+
   if (!localStorage.getItem(KEYS.PROFILE)) {
     localStorage.setItem(KEYS.PROFILE, JSON.stringify(DEFAULT_PROFILE));
   }
   if (!localStorage.getItem(KEYS.CLIENTS)) {
-    const defaultClients: Client[] = [
-      {
-        id: crypto.randomUUID(),
-        name: "Acme Corp",
-        company: "Acme Corporation",
-        email: "billing@acme.com",
-        phone: "+61 400 111 222",
-        address: "Level 1, 100 Business St, Melbourne",
-        notes: "Key enterprise client",
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: crypto.randomUUID(),
-        name: "Globex Inc",
-        company: "Globex Industries",
-        email: "accounts@globex.com",
-        phone: "+61 400 333 444",
-        address: "Unit 5, 200 Corporate Blvd, Brisbane",
-        notes: "",
-        createdAt: new Date().toISOString(),
-      }
-    ];
-    localStorage.setItem(KEYS.CLIENTS, JSON.stringify(defaultClients));
-    
-    const defaultInvoices: Invoice[] = [
-      {
-        id: crypto.randomUUID(),
-        invoiceNumber: "INV-1001",
-        clientId: defaultClients[0].id,
-        status: "paid",
-        invoiceDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-        dueDate: new Date(Date.now() - 16 * 24 * 60 * 60 * 1000).toISOString(),
-        lineItems: [
-          { id: crypto.randomUUID(), description: "Web Development", quantity: 40, rate: 120, taxPercent: 10, discountPercent: 0 }
-        ],
-        notes: "Thank you for your business.",
-        createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-        updatedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-      {
-        id: crypto.randomUUID(),
-        invoiceNumber: "INV-1002",
-        clientId: defaultClients[1].id,
-        status: "sent",
-        invoiceDate: new Date().toISOString(),
-        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-        lineItems: [
-          { id: crypto.randomUUID(), description: "Monthly Retainer - SEO", quantity: 1, rate: 1500, taxPercent: 10, discountPercent: 0 },
-          { id: crypto.randomUUID(), description: "Ad-hoc fixes", quantity: 5, rate: 120, taxPercent: 10, discountPercent: 0 }
-        ],
-        notes: "Please pay within 14 days.",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
-    ];
-    localStorage.setItem(KEYS.INVOICES, JSON.stringify(defaultInvoices));
-    
-    const profile = JSON.parse(localStorage.getItem(KEYS.PROFILE) || "{}");
-    profile.nextInvoiceNumber = 1003;
-    localStorage.setItem(KEYS.PROFILE, JSON.stringify(profile));
+    localStorage.setItem(KEYS.CLIENTS, JSON.stringify([]));
+  }
+  if (!localStorage.getItem(KEYS.INVOICES)) {
+    localStorage.setItem(KEYS.INVOICES, JSON.stringify([]));
   }
 }
 
 export function getBusinessProfile(): BusinessProfile {
   initStorage();
-  return JSON.parse(localStorage.getItem(KEYS.PROFILE) || "{}");
+  const stored = JSON.parse(localStorage.getItem(KEYS.PROFILE) || "{}");
+  return { ...DEFAULT_PROFILE, ...stored };
 }
 
 export function saveBusinessProfile(profile: BusinessProfile) {
@@ -145,14 +113,14 @@ export function getClients(): Client[] {
 
 export function saveClient(client: Client) {
   const clients = getClients();
-  const existing = clients.findIndex(c => c.id === client.id);
+  const existing = clients.findIndex((c) => c.id === client.id);
   if (existing >= 0) clients[existing] = client;
   else clients.push(client);
   localStorage.setItem(KEYS.CLIENTS, JSON.stringify(clients));
 }
 
 export function deleteClient(id: string) {
-  const clients = getClients().filter(c => c.id !== id);
+  const clients = getClients().filter((c) => c.id !== id);
   localStorage.setItem(KEYS.CLIENTS, JSON.stringify(clients));
 }
 
@@ -163,20 +131,20 @@ export function getInvoices(): Invoice[] {
 
 export function saveInvoice(invoice: Invoice) {
   const invoices = getInvoices();
-  const existing = invoices.findIndex(i => i.id === invoice.id);
+  const existing = invoices.findIndex((i) => i.id === invoice.id);
   if (existing >= 0) invoices[existing] = invoice;
   else invoices.push(invoice);
   localStorage.setItem(KEYS.INVOICES, JSON.stringify(invoices));
 }
 
 export function deleteInvoice(id: string) {
-  const invoices = getInvoices().filter(i => i.id !== id);
+  const invoices = getInvoices().filter((i) => i.id !== id);
   localStorage.setItem(KEYS.INVOICES, JSON.stringify(invoices));
 }
 
 export function getNextInvoiceNumber(): string {
   const profile = getBusinessProfile();
-  return `${profile.invoicePrefix}-${String(profile.nextInvoiceNumber).padStart(4, '0')}`;
+  return `${profile.invoicePrefix}-${String(profile.nextInvoiceNumber).padStart(4, "0")}`;
 }
 
 export function incrementInvoiceNumber() {

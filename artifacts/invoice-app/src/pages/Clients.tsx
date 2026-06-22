@@ -19,6 +19,7 @@ const clientSchema = z.object({
   email: z.string().email("Invalid email").or(z.literal("")),
   phone: z.string(),
   address: z.string(),
+  abn: z.string(),
   notes: z.string(),
 });
 
@@ -38,6 +39,7 @@ export default function Clients() {
       email: "",
       phone: "",
       address: "",
+      abn: "",
       notes: "",
     }
   });
@@ -50,14 +52,7 @@ export default function Clients() {
 
   const openNewModal = () => {
     setEditingClient(null);
-    form.reset({
-      name: "",
-      company: "",
-      email: "",
-      phone: "",
-      address: "",
-      notes: "",
-    });
+    form.reset({ name: "", company: "", email: "", phone: "", address: "", abn: "", notes: "" });
     setIsModalOpen(true);
   };
 
@@ -69,6 +64,7 @@ export default function Clients() {
       email: client.email,
       phone: client.phone,
       address: client.address,
+      abn: client.abn || "",
       notes: client.notes,
     });
     setIsModalOpen(true);
@@ -241,6 +237,22 @@ export default function Clients() {
                       <FormLabel>Phone</FormLabel>
                       <FormControl>
                         <Input placeholder="+61 400 000 000" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="abn"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>ABN</FormLabel>
+                      <FormControl>
+                        <Input placeholder="12 345 678 901" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
