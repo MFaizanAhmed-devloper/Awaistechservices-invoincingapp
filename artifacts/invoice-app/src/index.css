@@ -244,6 +244,134 @@
   }
 }
 
+/* ── Liquid Crystal / Glassmorphism Utilities ── */
+@layer utilities {
+  .glass {
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(18px) saturate(180%);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+  }
+
+  .dark .glass {
+    background: rgba(17, 25, 50, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .glass-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(24px) saturate(200%);
+    -webkit-backdrop-filter: blur(24px) saturate(200%);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 8px 32px rgba(79, 70, 229, 0.08), 0 1px 0 rgba(255,255,255,0.6) inset;
+  }
+
+  .dark .glass-card {
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(148, 163, 184, 0.10);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 1px 0 rgba(255,255,255,0.04) inset;
+  }
+
+  .glass-sidebar {
+    background: linear-gradient(160deg, rgba(15, 20, 45, 0.97) 0%, rgba(20, 14, 55, 0.97) 100%);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-right: 1px solid rgba(79, 70, 229, 0.15);
+  }
+
+  .crystal-bg {
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 0%, rgba(79, 70, 229, 0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 100%, rgba(124, 58, 237, 0.10) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 40% at 60% 40%, rgba(6, 182, 212, 0.06) 0%, transparent 60%),
+      hsl(var(--background));
+  }
+
+  .dark .crystal-bg {
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 0%, rgba(79, 70, 229, 0.18) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 100%, rgba(124, 58, 237, 0.15) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 40% at 60% 40%, rgba(6, 182, 212, 0.08) 0%, transparent 60%),
+      hsl(var(--background));
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.15), 0 4px 20px rgba(79, 70, 229, 0.15);
+  }
+
+  .glow-primary:hover {
+    box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.3), 0 8px 30px rgba(79, 70, 229, 0.2);
+  }
+
+  .crystal-card {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.8) inset,
+      0 8px 24px rgba(79, 70, 229, 0.06),
+      0 2px 8px rgba(0, 0, 0, 0.04);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+  }
+
+  .crystal-card:hover {
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.9) inset,
+      0 16px 40px rgba(79, 70, 229, 0.12),
+      0 4px 12px rgba(0, 0, 0, 0.06);
+    transform: translateY(-1px);
+  }
+
+  .dark .crystal-card {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(148, 163, 184, 0.08);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.05) inset,
+      0 8px 24px rgba(0, 0, 0, 0.3);
+  }
+
+  .dark .crystal-card:hover {
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.07) inset,
+      0 16px 40px rgba(79, 70, 229, 0.2),
+      0 4px 12px rgba(0, 0, 0, 0.4);
+    transform: translateY(-1px);
+  }
+
+  /* Nav item shimmer on active */
+  .nav-active {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.9) 0%, rgba(124, 58, 237, 0.8) 100%);
+    box-shadow: 0 4px 15px rgba(79, 70, 229, 0.35), 0 1px 0 rgba(255,255,255,0.1) inset;
+  }
+
+  .shimmer {
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(255,255,255,0.06) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2.5s infinite;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  .aurora-bar {
+    background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 35%, #06b6d4 65%, #4f46e5 100%);
+    background-size: 200% 100%;
+    animation: aurora 4s linear infinite;
+  }
+
+  @keyframes aurora {
+    0% { background-position: 0% 0; }
+    100% { background-position: 200% 0; }
+  }
+}
+
 @media print {
   .no-print {
     display: none !important;
