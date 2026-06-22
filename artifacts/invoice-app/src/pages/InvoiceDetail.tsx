@@ -1,10 +1,10 @@
 import { useApp } from "@/contexts/AppContext";
 import { saveInvoice } from "@/lib/storage";
 import { calculateInvoiceTotals, calculateLineItemTotals, formatCurrency } from "@/lib/calculations";
-import { generateWhatsAppLink } from "@/lib/pdf";
+import { generateWhatsAppLink, generateGmailLink } from "@/lib/pdf";
 import { useLocation, useParams } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Edit, Printer, MessageCircle, CheckCircle } from "lucide-react";
+import { ArrowLeft, Edit, Printer, MessageCircle, CheckCircle, Mail } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -67,6 +67,12 @@ export default function InvoiceDetail() {
     window.open(generateWhatsAppLink(invoice, client, profile), "_blank");
   };
 
+  const handleGmail = () => {
+    if (!client) { toast.error("Client not found"); return; }
+    if (!client.email) { toast.error("Client has no email address"); return; }
+    window.open(generateGmailLink(invoice, client, profile), "_blank");
+  };
+
   return (
     <div className="space-y-4 max-w-3xl">
       {/* Action bar */}
@@ -93,6 +99,10 @@ export default function InvoiceDetail() {
               <CheckCircle className="mr-1.5 h-4 w-4" /> Mark Paid
             </Button>
           )}
+          <Button variant="outline" size="sm" onClick={handleGmail} data-testid="button-gmail"
+            className="text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-950/30">
+            <Mail className="mr-1.5 h-4 w-4" /> Gmail
+          </Button>
           <Button variant="outline" size="sm" onClick={handleWhatsApp} data-testid="button-whatsapp">
             <MessageCircle className="mr-1.5 h-4 w-4" /> WhatsApp
           </Button>
