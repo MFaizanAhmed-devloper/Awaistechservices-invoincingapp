@@ -1,0 +1,227 @@
+Build a modern SaaS-style Invoice Management Web App for a single business owner (single user only, no multi-user accounts).
+
+
+
+### App Name
+
+
+
+Awais tech services invoincing app
+
+
+
+### Purpose 
+
+
+
+A simple but professional invoicing system where one admin can create, manage, send, and track invoices for clients. 
+
+
+
+### Features
+
+
+
+#### Dashboard
+
+
+
+* Total Revenue
+
+* Pending Invoices
+
+* Paid Invoices
+
+* Overdue Invoices
+
+* Monthly Revenue Chart
+
+* Recent Activity
+
+
+
+#### Client Management
+
+
+
+* Add, Edit, Delete Clients
+
+* Store:
+
+
+
+  * Client Name
+
+  * Company Name
+
+  * Email
+
+  * Phone Number
+
+  * Address
+
+  * Notes
+
+
+
+#### Invoice Management
+
+
+
+* Create New Invoice
+
+* Auto-generated Invoice Number
+
+* Invoice Date
+
+* Due Date
+
+* Client Selection
+
+* Add Multiple Line Items
+
+* Quantity
+
+* Rate
+
+* Tax %
+
+* Discount %
+
+* Automatic Calculations
+
+* Status:
+
+
+
+  * Draft
+
+  * Sent
+
+  * Paid
+
+  * Overdue
+
+
+
+#### PDF Generation
+
+
+
+* Professional PDF Invoice
+
+* Business Logo Support
+
+* Business Information Section
+
+* Download PDF
+
+* Print Invoice
+
+
+
+#### WhatsApp Sharing
+
+
+
+* Share invoice directly via WhatsApp
+
+* Generate shareable invoice link
+
+* Send invoice PDF through WhatsApp
+
+
+
+#### Search & Filters
+
+
+
+* Search invoices
+
+* Filter by:
+
+
+
+  * Paid
+
+  * Pending
+
+  * Overdue
+
+  * Date Range
+
+
+
+#### Reports
+
+
+
+* Monthly Revenue
+
+* Yearly Revenue
+
+* Top Clients
+
+* Export Reports to PDF
+
+
+
+### Design Requirements
+
+
+
+* Premium SaaS Dashboard
+
+* Glassmorphism effects
+
+* Modern cards
+
+* Mobile responsive
+
+* Dark & Light Mode
+
+* Smooth animations
+
+* Professional typography
+
+
+
+### Technical Requirements
+
+
+
+* React + TypeScript
+
+* Tailwind CSS
+
+* Local Storage database (no backend required)
+
+* Clean folder structure
+
+* Reusable components
+
+* Production-ready code
+
+
+
+### Extra Features
+
+
+
+* Business Profile Settings
+
+* Upload Logo
+
+* Currency Selection (australion dollar) 
+
+* Automatic Invoice Numbering
+
+* Backup and Restore Data (PDF Export/Import) 
+
+
+
+### Goal
+
+
+
+Create a polished invoicing application that looks like a premium paid SaaS product but works completely offline for a single user.
