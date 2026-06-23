@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "iwLNuk7MQWF7hPfLC18WE"
+uri = "file://awais-tech-invoicing.zip"
+type = "unspecified"
+title = "Awais Tech Services Invoicing — Source Code"
