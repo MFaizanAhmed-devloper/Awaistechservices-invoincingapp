@@ -56,6 +56,7 @@ const KEYS = {
   VERSION: "invoice_app_version",
   AUTH_HASH: "invoice_app_auth_hash",
   SESSION: "invoice_app_session",
+  BIOMETRIC_CRED: "invoice_app_biometric_cred",
 };
 
 const CURRENT_VERSION = "2";
@@ -190,6 +191,59 @@ export function hasSession(): boolean {
 export function clearSession() {
   localStorage.removeItem(KEYS.SESSION);
   sessionStorage.removeItem(KEYS.SESSION);
+}
+
+// ── Biometric / WebAuthn ──────────────────────────────────────────────────────
+
+export function hasBiometricRegistered(): boolean {
+  return !!localStorage.getItem(KEYS.BIOMETRIC_CRED);
+}
+
+export async function registerBiometric(): Promise<void> {
+  if (!window.PublicKeyCredential) throw new Error("not supported");
+  const challenge = crypto.getRandomValues(new Uint8Array(32));
+  const cred = (await navigator.credentials.create({
+    publicKey: {
+      challenge,
+      rp: { name: "Awais Tech Services Invoicing" },
+      user: {
+        id: new TextEncoder().encode("invoice-app-owner"),
+        name: "owner@awaistech",
+        displayName: "App Owner",
+      },
+      pubKeyCredParams: [
+        { alg: -7, type: "public-key" },
+        { alg: -257, type: "public-key" },
+      ],
+      authenticatorSelection: {
+        authenticatorAttachment: "platform",
+        userVerification: "required",
+      },
+      timeout: 60000,
+    },
+  })) as PublicKeyCredential;
+  const rawId = Array.from(new Uint8Array(cred.rawId));
+  localStorage.setItem(KEYS.BIOMETRIC_CRED, btoa(String.fromCharCode(...rawId)));
+}
+
+export async function verifyBiometric(): Promise<boolean> {
+  if (!window.PublicKeyCredential) return false;
+  const stored = localStorage.getItem(KEYS.BIOMETRIC_CRED);
+  if (!stored) return false;
+  const credIdBytes = Uint8Array.from(atob(stored), c => c.charCodeAt(0));
+  try {
+    await navigator.credentials.get({
+      publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        allowCredentials: [{ type: "public-key", id: credIdBytes }],
+        userVerification: "required",
+        timeout: 60000,
+      },
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
