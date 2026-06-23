@@ -140,6 +140,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="flex-1 overflow-y-auto p-4 md:p-8 w-full max-w-[1200px] mx-auto print:p-0 print:overflow-visible print:w-full print:max-w-none">
           {children}
         </div>
+        {/* Footer */}
+        <div className="no-print flex items-center justify-center py-2.5 border-t border-border/30 bg-background/50 shrink-0">
+          <p className="text-[11px] text-muted-foreground/60 tracking-wide select-none">
+            Made with <span className="text-red-400">♥</span> by{" "}
+            <span className="font-semibold text-muted-foreground/80">Faizan</span>
+          </p>
+        </div>
       </main>
     </div>
   );

@@ -4,48 +4,35 @@ import { format } from "date-fns";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
-export function generateWhatsAppLink(invoice: Invoice, client: Client, profile: BusinessProfile) {
+function buildMessageBody(invoice: Invoice, client: Client, profile: BusinessProfile): string {
   const totals = calculateInvoiceTotals(invoice.lineItems);
   const amount = formatCurrency(totals.total, profile.currency);
-  const date = format(new Date(invoice.dueDate), "MMM dd, yyyy");
-  
-  const text = `Hi ${client.name}, here's an update regarding your invoice ${invoice.invoiceNumber} for ${amount}. The due date is ${date}. Thanks! - ${profile.name}`;
+  const dueDate = format(new Date(invoice.dueDate), "MM/dd/yyyy");
+  return [
+    `Hello ${client.name},`,
+    ``,
+    `This is a friendly reminder regarding Invoice #${invoice.invoiceNumber} in the amount of ${amount}. The payment due date is ${dueDate}.`,
+    ``,
+    `If you have already made the payment, please disregard this message. Otherwise, we kindly request that payment be completed by the due date.`,
+    ``,
+    `Thank you for your business.`,
+    ``,
+    `Kind regards,`,
+    `${profile.name}`,
+  ].join("\n");
+}
+
+export function generateWhatsAppLink(invoice: Invoice, client: Client, profile: BusinessProfile) {
+  const text = buildMessageBody(invoice, client, profile);
   return `https://wa.me/${client.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`;
 }
 
 export function generateGmailLink(invoice: Invoice, client: Client, profile: BusinessProfile) {
   const totals = calculateInvoiceTotals(invoice.lineItems);
   const amount = formatCurrency(totals.total, profile.currency);
-  const dueDate = format(new Date(invoice.dueDate), "MMM dd, yyyy");
-  const invoiceDate = format(new Date(invoice.invoiceDate), "MMM dd, yyyy");
-
-  const subject = `Invoice ${invoice.invoiceNumber} from ${profile.name} – ${amount} due ${dueDate}`;
-
-  const body = [
-    `Hi ${client.name},`,
-    ``,
-    `Please find below the details for invoice ${invoice.invoiceNumber}.`,
-    ``,
-    `  Invoice Number : ${invoice.invoiceNumber}`,
-    `  Invoice Date   : ${invoiceDate}`,
-    `  Due Date       : ${dueDate}`,
-    `  Amount Due     : ${amount}`,
-    ``,
-    `Payment Details`,
-    `  Bank       : ${profile.bankName}`,
-    `  Account    : ${profile.accountNo}`,
-    `  Name       : ${profile.accountName}`,
-    ``,
-    `Please use the invoice number as the payment reference.`,
-    ``,
-    `If you have any questions, feel free to reply to this email.`,
-    ``,
-    `Kind regards,`,
-    `${profile.name}`,
-    `${profile.phone}`,
-    `${profile.email}`,
-  ].join("\n");
-
+  const dueDate = format(new Date(invoice.dueDate), "MM/dd/yyyy");
+  const subject = `Invoice #${invoice.invoiceNumber} – ${amount} due ${dueDate} | ${profile.name}`;
+  const body = buildMessageBody(invoice, client, profile);
   const params = new URLSearchParams({ to: client.email, su: subject, body });
   return `https://mail.google.com/mail/?view=cm&fs=1&${params.toString()}`;
 }
