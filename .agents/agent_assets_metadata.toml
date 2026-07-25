@@ -6,3 +6,9 @@ id = "iwLNuk7MQWF7hPfLC18WE"
 uri = "file://awais-tech-invoicing.zip"
 type = "unspecified"
 title = "Awais Tech Services Invoicing — Source Code"
+
+[[outputs]]
+id = "AbwQcM-PnuD7DKY_n8Qqy"
+uri = "file://awais-tech-invoicing-dist.zip"
+type = "unspecified"
+title = "ATS Invoicing — Ready-to-Deploy Build (dist)"
