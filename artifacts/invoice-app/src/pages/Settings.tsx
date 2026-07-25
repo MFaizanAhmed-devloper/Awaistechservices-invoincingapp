@@ -1,6 +1,8 @@
 import { useApp } from "@/contexts/AppContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { getInvoices, getClients, getBusinessProfile, saveBusinessProfile, BusinessProfile, changePassword } from "@/lib/storage";
+import { BusinessProfile } from "@/lib/storage";
+import { supabase } from "@/lib/supabase";
+import { upsertClient, upsertInvoice, upsertProfile, removeClient, removeInvoice } from "@/lib/supabase-db";
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,22 +25,29 @@ const CURRENCIES = [
 ];
 
 export default function Settings() {
-  const { profile, refreshData } = useApp();
-  const { logout } = useAuth();
+  const { profile, clients, invoices, updateProfile, refreshData } = useApp();
+  const { logout, user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<BusinessProfile>({ ...profile });
-  const [pwForm, setPwForm] = useState({ current: "", newPw: "", confirm: "" });
+  const [pwForm, setPwForm] = useState({ newPw: "", confirm: "" });
   const [pwLoading, setPwLoading] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
 
   const handleChange = (field: keyof BusinessProfile, value: string | number) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = () => {
-    saveBusinessProfile(form);
-    refreshData();
-    toast.success("Settings saved");
+  const handleSave = async () => {
+    setSaveLoading(true);
+    try {
+      await updateProfile(form);
+      toast.success("Settings saved to Supabase");
+    } catch {
+      toast.error("Failed to save settings");
+    } finally {
+      setSaveLoading(false);
+    }
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,9 +64,9 @@ export default function Settings() {
   const handleExportData = () => {
     const data = {
       exportedAt: new Date().toISOString(),
-      profile: getBusinessProfile(),
-      clients: getClients(),
-      invoices: getInvoices(),
+      profile,
+      clients,
+      invoices,
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -69,49 +78,50 @@ export default function Settings() {
     toast.success("Data exported successfully");
   };
 
-  const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportData = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       try {
         const data = JSON.parse(reader.result as string);
         if (!data.profile || !data.clients || !data.invoices) { toast.error("Invalid backup file"); return; }
-        if (!confirm("This will replace ALL current data. Continue?")) return;
-        localStorage.setItem("invoice_app_biz_profile", JSON.stringify(data.profile));
-        localStorage.setItem("invoice_app_clients", JSON.stringify(data.clients));
-        localStorage.setItem("invoice_app_invoices", JSON.stringify(data.invoices));
-        refreshData();
+        if (!confirm("This will import all data from the backup into your Supabase account. Continue?")) return;
+        await upsertProfile(data.profile);
+        for (const c of data.clients) await upsertClient(c);
+        for (const inv of data.invoices) await upsertInvoice(inv);
+        await refreshData();
         setForm({ ...data.profile });
-        toast.success("Data restored from backup");
+        toast.success("Data restored from backup to Supabase");
       } catch { toast.error("Failed to parse backup file"); }
     };
     reader.readAsText(file);
     e.target.value = "";
   };
 
-  const handleClearData = () => {
-    if (!confirm("Permanently delete ALL clients and invoices? Cannot be undone.")) return;
-    localStorage.removeItem("invoice_app_clients");
-    localStorage.removeItem("invoice_app_invoices");
-    const newProfile = { ...form, nextInvoiceNumber: 1001 };
-    saveBusinessProfile(newProfile);
-    setForm(newProfile);
-    refreshData();
-    toast.success("All data cleared");
+  const handleClearData = async () => {
+    if (!confirm("Permanently delete ALL clients and invoices from Supabase? Cannot be undone.")) return;
+    try {
+      for (const c of clients) await removeClient(c.id);
+      for (const inv of invoices) await removeInvoice(inv.id);
+      const newProfile = { ...form, nextInvoiceNumber: 1001 };
+      await upsertProfile(newProfile);
+      setForm(newProfile);
+      await refreshData();
+      toast.success("All data cleared");
+    } catch {
+      toast.error("Failed to clear data");
+    }
   };
 
   const handleChangePassword = async () => {
-    if (!pwForm.current) { toast.error("Enter your current password"); return; }
     if (pwForm.newPw.length < 6) { toast.error("New password must be at least 6 characters"); return; }
     if (pwForm.newPw !== pwForm.confirm) { toast.error("Passwords don't match"); return; }
     setPwLoading(true);
-    const { verifyPassword } = await import("@/lib/storage");
-    const ok = await verifyPassword(pwForm.current);
-    if (!ok) { setPwLoading(false); toast.error("Current password is incorrect"); return; }
-    await changePassword(pwForm.newPw);
+    const { error } = await supabase.auth.updateUser({ password: pwForm.newPw });
     setPwLoading(false);
-    setPwForm({ current: "", newPw: "", confirm: "" });
+    if (error) { toast.error(error.message); return; }
+    setPwForm({ newPw: "", confirm: "" });
     toast.success("Password changed successfully");
   };
 
@@ -281,9 +291,9 @@ export default function Settings() {
       </Card>
 
       <div className="flex justify-end">
-        <Button onClick={handleSave} size="lg" data-testid="button-save-settings"
+        <Button onClick={handleSave} size="lg" disabled={saveLoading} data-testid="button-save-settings"
           className="aurora-bar border-0 text-white hover:opacity-90 shadow-lg shadow-indigo-200 dark:shadow-indigo-900/40">
-          <Save className="mr-2 h-4 w-4" /> Save Settings
+          <Save className="mr-2 h-4 w-4" /> {saveLoading ? "Saving…" : "Save Settings"}
         </Button>
       </div>
 
@@ -296,18 +306,14 @@ export default function Settings() {
             </div>
             <div>
               <CardTitle>Security</CardTitle>
-              <CardDescription>Change your login password or sign out</CardDescription>
+              <CardDescription>
+                Signed in as <span className="font-semibold text-foreground">{user?.email}</span>
+              </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="curPw">Current Password</Label>
-              <Input id="curPw" type="password" value={pwForm.current}
-                onChange={e => setPwForm(p => ({ ...p, current: e.target.value }))}
-                placeholder="Enter current password" />
-            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="newPw">New Password</Label>
@@ -333,7 +339,6 @@ export default function Settings() {
               <LogOut className="mr-2 h-4 w-4" /> Sign Out
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">Default password on first use: <span className="font-mono font-semibold">admin123</span></p>
         </CardContent>
       </Card>
 
@@ -348,7 +353,7 @@ export default function Settings() {
             </div>
             <div>
               <CardTitle>Data Management</CardTitle>
-              <CardDescription>Backup, restore, or clear all app data</CardDescription>
+              <CardDescription>Backup, restore, or clear all Supabase data</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -370,7 +375,7 @@ export default function Settings() {
               onClick={handleClearData} data-testid="button-clear-data">
               <Trash2 className="mr-2 h-4 w-4" /> Clear All Data
             </Button>
-            <p className="text-xs text-muted-foreground mt-2">Permanently deletes all clients and invoices. Settings are kept.</p>
+            <p className="text-xs text-muted-foreground mt-2">Permanently deletes all clients and invoices from Supabase. Settings are kept.</p>
           </div>
         </CardContent>
       </Card>

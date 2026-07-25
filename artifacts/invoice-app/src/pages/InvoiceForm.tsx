@@ -1,5 +1,6 @@
 import { useApp } from "@/contexts/AppContext";
-import { saveInvoice, getNextInvoiceNumber, incrementInvoiceNumber, LineItem, Invoice } from "@/lib/storage";
+import { LineItem, Invoice } from "@/lib/storage";
+import { getNextInvoiceNumberFromDb, incrementInvoiceNumberInDb } from "@/lib/supabase-db";
 import { calculateLineItemTotals, calculateInvoiceTotals, formatCurrency } from "@/lib/calculations";
 import { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
@@ -21,7 +22,7 @@ function in30DaysStr() { const d = new Date(); d.setDate(d.getDate() + 30); retu
 const TEAL = "#4BBFC0";
 
 export default function InvoiceForm() {
-  const { invoices, clients, profile, refreshData } = useApp();
+  const { invoices, clients, profile, saveInvoice } = useApp();
   const [, setLocation] = useLocation();
   const params = useParams<{ id?: string }>();
   const isEdit = !!params.id && params.id !== "new";
@@ -36,7 +37,9 @@ export default function InvoiceForm() {
   const [notes, setNotes] = useState(existingInvoice?.notes || "Thank you for your business.");
 
   useEffect(() => {
-    if (!isEdit && !invoiceNumber) setInvoiceNumber(getNextInvoiceNumber());
+    if (!isEdit && !invoiceNumber) {
+      getNextInvoiceNumberFromDb().then(setInvoiceNumber).catch(() => {});
+    }
   }, [isEdit, invoiceNumber]);
 
   const addLineItem = () => setLineItems(p => [...p, emptyLineItem()]);
@@ -46,7 +49,7 @@ export default function InvoiceForm() {
 
   const totals = calculateInvoiceTotals(lineItems);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!clientId) { toast.error("Please select a client"); return; }
     if (lineItems.some(li => !li.description.trim())) { toast.error("All line items must have a description"); return; }
     const now = new Date().toISOString();
@@ -59,9 +62,8 @@ export default function InvoiceForm() {
       createdAt: existingInvoice?.createdAt || now,
       updatedAt: now,
     };
-    saveInvoice(invoice);
-    if (!isEdit) incrementInvoiceNumber();
-    refreshData();
+    await saveInvoice(invoice);
+    if (!isEdit) await incrementInvoiceNumberInDb();
     toast.success(isEdit ? "Invoice updated" : "Invoice created");
     setLocation(`/invoices/${invoice.id}`);
   };

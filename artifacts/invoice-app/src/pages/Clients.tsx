@@ -1,5 +1,5 @@
 import { useApp } from "@/contexts/AppContext";
-import { saveClient, deleteClient, Client } from "@/lib/storage";
+import { Client } from "@/lib/storage";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +26,7 @@ const clientSchema = z.object({
 type ClientFormValues = z.infer<typeof clientSchema>;
 
 export default function Clients() {
-  const { clients, refreshData } = useApp();
+  const { clients, saveClient, deleteClient } = useApp();
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
@@ -70,22 +70,20 @@ export default function Clients() {
     setIsModalOpen(true);
   };
 
-  const onSubmit = (data: ClientFormValues) => {
+  const onSubmit = async (data: ClientFormValues) => {
     const client: Client = {
       id: editingClient?.id || crypto.randomUUID(),
       ...data,
       createdAt: editingClient?.createdAt || new Date().toISOString()
     };
-    saveClient(client);
-    refreshData();
+    await saveClient(client);
     setIsModalOpen(false);
     toast.success(editingClient ? "Client updated" : "Client created");
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this client?")) {
-      deleteClient(id);
-      refreshData();
+      await deleteClient(id);
       toast.success("Client deleted");
     }
   };

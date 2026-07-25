@@ -1,5 +1,4 @@
 import { useApp } from "@/contexts/AppContext";
-import { saveInvoice } from "@/lib/storage";
 import { calculateInvoiceTotals, calculateLineItemTotals, formatCurrency } from "@/lib/calculations";
 import { generateWhatsAppLink, generateGmailLink, downloadInvoicePDF } from "@/lib/pdf";
 import { useLocation, useParams } from "wouter";
@@ -31,7 +30,7 @@ function AccentStripe() {
 }
 
 export default function InvoiceDetail() {
-  const { invoices, clients, profile, refreshData } = useApp();
+  const { invoices, clients, profile, saveInvoice } = useApp();
   const [, setLocation] = useLocation();
   const params = useParams<{ id: string }>();
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -55,9 +54,8 @@ export default function InvoiceDetail() {
     ...Array.from({ length: Math.max(0, MAX_ROWS - invoice.lineItems.length) }, () => null),
   ];
 
-  const handleMarkPaid = () => {
-    saveInvoice({ ...invoice, status: "paid", updatedAt: new Date().toISOString() });
-    refreshData();
+  const handleMarkPaid = async () => {
+    await saveInvoice({ ...invoice, status: "paid", updatedAt: new Date().toISOString() });
     toast.success("Invoice marked as paid");
   };
 
