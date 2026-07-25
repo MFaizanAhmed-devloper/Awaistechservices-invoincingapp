@@ -41,10 +41,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {profile.logo ? (
             <img src={profile.logo} alt={profile.name} className="h-9 max-w-[140px] object-contain rounded-lg" />
           ) : (
-            <div className="h-10 w-10 rounded-xl flex items-center justify-center text-white font-black text-lg shrink-0"
-              style={{ background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)", boxShadow: "0 4px 14px rgba(79,70,229,0.5)" }}>
-              {profile.name.charAt(0)}
-            </div>
+            <img src="/logo.png" alt="Awais Tech Services" className="h-10 w-10 object-contain rounded-xl shrink-0" />
           )}
           <div className="min-w-0">
             <h2 className="font-bold text-sm leading-tight text-white truncate" title={profile.name}>
@@ -109,12 +106,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <header className="md:hidden flex items-center justify-between px-4 py-3 border-b border-border/50 glass no-print">
         <div className="flex items-center gap-2">
           {profile.logo ? (
-            <img src={profile.logo} alt={profile.name} className="h-7 object-contain" />
+            <img src={profile.logo} alt={profile.name} className="h-8 object-contain rounded-lg" />
           ) : (
-            <div className="h-8 w-8 rounded-lg flex items-center justify-center text-white font-bold text-sm"
-              style={{ background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)" }}>
-              {profile.name.charAt(0)}
-            </div>
+            <img src="/logo.png" alt="Awais Tech Services" className="h-8 w-8 object-contain rounded-lg" />
           )}
           <span className="font-semibold text-sm truncate max-w-[160px]">{profile.name}</span>
         </div>

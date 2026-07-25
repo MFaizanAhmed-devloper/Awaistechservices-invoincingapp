@@ -77,12 +77,7 @@ export default function Login() {
         flexShrink: 0,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{
-            width: 36, height: 36, borderRadius: 8,
-            background: TEAL, display: "flex",
-            alignItems: "center", justifyContent: "center",
-            fontWeight: 800, fontSize: 18, color: "white",
-          }}>A</div>
+          <img src="/logo.png" alt="Awais Tech Services" style={{ height: 36, width: 36, objectFit: "contain", borderRadius: 8 }} />
           <div>
             <div style={{ color: "white", fontWeight: 700, fontSize: 13, letterSpacing: 1 }}>
               AWAIS TECH SERVICES
@@ -125,14 +120,9 @@ export default function Login() {
           }} />
 
           <div style={{ padding: "36px 36px 40px" }}>
-            {/* Icon */}
-            <div style={{
-              width: 56, height: 56, borderRadius: 14,
-              background: NAVY, display: "flex",
-              alignItems: "center", justifyContent: "center",
-              fontWeight: 800, fontSize: 26, color: "white",
-              marginBottom: 24,
-            }}>A</div>
+            {/* Logo */}
+            <img src="/logo.png" alt="Awais Tech Services"
+              style={{ width: 64, height: 64, objectFit: "contain", borderRadius: 14, marginBottom: 24, background: NAVY, padding: 6 }} />
 
             {/* Title */}
             {mode === "login" && (
