@@ -13,6 +13,7 @@ import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
 import Login from "@/pages/Login";
 import NotFound from "@/pages/not-found";
+import InstallBanner from "@/components/InstallBanner";
 
 function Router() {
   const { isAuthenticated } = useAuth();
@@ -46,6 +47,7 @@ function App() {
           <Router />
         </WouterRouter>
         <Toaster />
+        <InstallBanner />
       </TooltipProvider>
     </AuthProvider>
   );
