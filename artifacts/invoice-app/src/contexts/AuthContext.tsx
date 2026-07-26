@@ -6,8 +6,10 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   user: User | null;
   session: Session | null;
+  providerToken: string | null;   // Google OAuth access token (has Sheets scope)
   login: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string) => Promise<{ error: string | null }>;
+  signInWithGoogle: () => Promise<{ error: string | null }>;
   logout: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: string | null }>;
 }
@@ -17,6 +19,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [providerToken, setProviderToken] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -24,6 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      setProviderToken(session?.provider_token ?? null);
       setReady(true);
     });
 
@@ -31,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+      setProviderToken(session?.provider_token ?? null);
     });
 
     return () => subscription.unsubscribe();
@@ -42,7 +47,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) return { error: error.message };
+    // If Supabase has email confirmation disabled the user is already in session
+    if (data.session) return { error: null };
+    // Otherwise try an immediate login (works when "Confirm email" is OFF in Supabase dashboard)
+    const { error: loginErr } = await supabase.auth.signInWithPassword({ email, password });
+    if (!loginErr) return { error: null };
+    // Email confirmation is required — let the UI show the instruction
+    return { error: "confirm_email" };
+  };
+
+  const signInWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}`,
+        // Request Sheets + Drive scopes so we can sync invoices to Google Sheets
+        scopes: [
+          "https://www.googleapis.com/auth/spreadsheets",
+          "https://www.googleapis.com/auth/drive.file",
+        ].join(" "),
+        queryParams: { access_type: "offline", prompt: "consent" },
+      },
+    });
     return { error: error?.message ?? null };
   };
 
@@ -67,20 +95,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         background: "#f0f4f8",
       }}>
         <div style={{ textAlign: "center" }}>
-          <div style={{
-            width: 48,
-            height: 48,
-            borderRadius: 12,
-            background: "#0d1b2a",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 24,
-            fontWeight: 800,
-            color: "white",
-            margin: "0 auto 16px",
-            fontFamily: "Inter, sans-serif",
-          }}>A</div>
+          <img src="/logo.png" alt="Awais Tech Services"
+            style={{ width: 48, height: 48, borderRadius: 12, objectFit: "contain",
+              background: "white", padding: 4, margin: "0 auto 16px", display: "block" }} />
           <p style={{ color: "#64748b", fontSize: 14, fontFamily: "Inter, sans-serif" }}>Loading…</p>
         </div>
       </div>
@@ -92,8 +109,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: !!user,
       user,
       session,
+      providerToken,
       login,
       signUp,
+      signInWithGoogle,
       logout,
       resetPassword,
     }}>

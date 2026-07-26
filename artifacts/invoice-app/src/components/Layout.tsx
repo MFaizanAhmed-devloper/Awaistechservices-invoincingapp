@@ -39,9 +39,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <div className="p-6 pb-4">
         <div className="flex items-center gap-3 mb-1">
           {profile.logo ? (
-            <img src={profile.logo} alt={profile.name} className="h-9 max-w-[140px] object-contain rounded-lg" />
+            <img src={profile.logo} alt={profile.name} className="h-9 max-w-[140px] object-contain rounded-lg bg-white p-1" />
           ) : (
-            <img src="/logo.png" alt="Awais Tech Services" className="h-10 w-10 object-contain rounded-xl shrink-0" />
+            <img src="/logo.png" alt="Awais Tech Services" className="h-10 w-10 object-contain rounded-xl shrink-0 bg-white p-1" />
           )}
           <div className="min-w-0">
             <h2 className="font-bold text-sm leading-tight text-white truncate" title={profile.name}>
@@ -106,9 +106,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <header className="md:hidden flex items-center justify-between px-4 py-3 border-b border-border/50 glass no-print">
         <div className="flex items-center gap-2">
           {profile.logo ? (
-            <img src={profile.logo} alt={profile.name} className="h-8 object-contain rounded-lg" />
+            <img src={profile.logo} alt={profile.name} className="h-8 object-contain rounded-lg bg-white p-1" />
           ) : (
-            <img src="/logo.png" alt="Awais Tech Services" className="h-8 w-8 object-contain rounded-lg" />
+            <img src="/logo.png" alt="Awais Tech Services" className="h-8 w-8 object-contain rounded-lg bg-white p-1" />
           )}
           <span className="font-semibold text-sm truncate max-w-[160px]">{profile.name}</span>
         </div>

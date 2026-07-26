@@ -18,3 +18,9 @@ id = "UFHh_gDY573xdkIQq_bVy"
 uri = "file://artifacts/invoice-app/supabase-schema.sql"
 type = "unspecified"
 title = "Supabase SQL Schema — Run this in your Supabase dashboard"
+
+[[outputs]]
+id = "zU4th0aAzyZe50OIZylNk"
+uri = "file://invoice-app-dist.zip"
+type = "unspecified"
+title = "invoice-app dist — Google Sign-in, Sheets sync, logo fix, patched deps"

@@ -8,8 +8,18 @@ type Mode = "login" | "signup" | "forgot";
 const TEAL = "#14b8a6";
 const NAVY = "#0d1b2a";
 
+// Google G icon SVG
+const GoogleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+    <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+    <path d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z" fill="#FBBC05"/>
+    <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+  </svg>
+);
+
 export default function Login() {
-  const { login, signUp, resetPassword } = useAuth();
+  const { login, signUp, signInWithGoogle, resetPassword } = useAuth();
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,11 +49,15 @@ export default function Login() {
       setLoading(true);
       const { error } = await signUp(email, password);
       setLoading(false);
-      if (error) { toast.error(error); return; }
-      toast.success("Account created! Check your email to confirm, then sign in.");
-      setMode("login");
-      setPassword("");
-      setConfirmPassword("");
+      if (error === "confirm_email") {
+        toast.success("Account created! Check your email to confirm, then sign in.");
+        setMode("login");
+        setPassword("");
+        setConfirmPassword("");
+      } else if (error) {
+        toast.error(error);
+      }
+      // If no error and no confirm_email, signUp auto-logged the user in — AuthContext handles redirect
       return;
     }
 
@@ -77,7 +91,7 @@ export default function Login() {
         flexShrink: 0,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <img src="/logo.png" alt="Awais Tech Services" style={{ height: 36, width: 36, objectFit: "contain", borderRadius: 8 }} />
+          <img src="/logo.png" alt="Awais Tech Services" style={{ height: 36, width: 36, objectFit: "contain", borderRadius: 8, background: "white", padding: 3 }} />
           <div>
             <div style={{ color: "white", fontWeight: 700, fontSize: 13, letterSpacing: 1 }}>
               AWAIS TECH SERVICES
@@ -122,7 +136,7 @@ export default function Login() {
           <div style={{ padding: "36px 36px 40px" }}>
             {/* Logo */}
             <img src="/logo.png" alt="Awais Tech Services"
-              style={{ width: 64, height: 64, objectFit: "contain", borderRadius: 14, marginBottom: 24, background: NAVY, padding: 6 }} />
+              style={{ width: 64, height: 64, objectFit: "contain", borderRadius: 14, marginBottom: 24, background: "white", padding: 8, boxShadow: "0 2px 10px rgba(0,0,0,0.1)" }} />
 
             {/* Title */}
             {mode === "login" && (
@@ -265,6 +279,38 @@ export default function Login() {
                     </span>
                   )}
                 </button>
+
+                {/* Google sign-in (login + signup modes) */}
+                {mode !== "forgot" && (
+                  <div style={{ marginTop: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                      <div style={{ flex: 1, height: 1, background: "#e2e8f0" }} />
+                      <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 500 }}>or continue with</span>
+                      <div style={{ flex: 1, height: 1, background: "#e2e8f0" }} />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setLoading(true);
+                        const { error } = await signInWithGoogle();
+                        setLoading(false);
+                        if (error) toast.error(error);
+                      }}
+                      disabled={loading}
+                      style={{
+                        width: "100%", height: 46, border: "1.5px solid #e2e8f0",
+                        borderRadius: 12, background: "white", cursor: loading ? "not-allowed" : "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                        fontSize: 14, fontWeight: 600, color: "#374151",
+                        transition: "background 0.15s, border-color 0.15s",
+                        opacity: loading ? 0.7 : 1,
+                      }}
+                    >
+                      <GoogleIcon />
+                      Sign {mode === "signup" ? "up" : "in"} with Google
+                    </button>
+                  </div>
+                )}
 
                 {/* Mode switches */}
                 <div style={{ textAlign: "center", marginTop: 20 }}>

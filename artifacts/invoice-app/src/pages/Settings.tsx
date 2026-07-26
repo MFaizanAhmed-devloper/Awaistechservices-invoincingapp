@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { BusinessProfile } from "@/lib/storage";
 import { supabase } from "@/lib/supabase";
 import { upsertClient, upsertInvoice, upsertProfile, removeClient, removeInvoice } from "@/lib/supabase-db";
+import { syncToGoogleSheets, getSavedSheetUrl } from "@/lib/google-sheets";
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Save, Upload, Download, RefreshCw, Trash2, Building2, CreditCard, FileText, Database, ShieldCheck, LogOut } from "lucide-react";
+import { Save, Upload, Download, RefreshCw, Trash2, Building2, CreditCard, FileText, Database, ShieldCheck, LogOut, ExternalLink, Sheet } from "lucide-react";
 import { toast } from "sonner";
 
 const CURRENCIES = [
@@ -26,13 +27,15 @@ const CURRENCIES = [
 
 export default function Settings() {
   const { profile, clients, invoices, updateProfile, refreshData } = useApp();
-  const { logout, user } = useAuth();
+  const { logout, user, providerToken } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<BusinessProfile>({ ...profile });
   const [pwForm, setPwForm] = useState({ newPw: "", confirm: "" });
   const [pwLoading, setPwLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
+  const [sheetSyncing, setSheetSyncing] = useState(false);
+  const [sheetUrl, setSheetUrl] = useState<string | null>(getSavedSheetUrl);
 
   const handleChange = (field: keyof BusinessProfile, value: string | number) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -61,21 +64,113 @@ export default function Settings() {
     reader.readAsDataURL(file);
   };
 
-  const handleExportData = () => {
-    const data = {
-      exportedAt: new Date().toISOString(),
-      profile,
-      clients,
-      invoices,
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `awais-invoicing-backup-${new Date().toISOString().split("T")[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success("Data exported successfully");
+  const handleGoogleSheetsSync = async () => {
+    if (!providerToken) {
+      toast.error("Sign in with Google first to enable Sheets sync");
+      return;
+    }
+    setSheetSyncing(true);
+    try {
+      const invoiceRows = invoices.map(inv => {
+        const subtotal = inv.lineItems.reduce((s, i) => s + i.quantity * i.rate, 0);
+        const tax = inv.lineItems.reduce((s, i) => s + i.quantity * i.rate * (i.taxPercent / 100), 0);
+        const discount = inv.lineItems.reduce((s, i) => s + i.quantity * i.rate * (i.discountPercent / 100), 0);
+        return {
+          "Invoice #": inv.invoiceNumber,
+          "Client": clients.find(c => c.id === inv.clientId)?.name ?? inv.clientId,
+          "Status": inv.status,
+          "Issue Date": inv.invoiceDate,
+          "Due Date": inv.dueDate,
+          "Subtotal ($)": subtotal.toFixed(2),
+          "Discount ($)": discount.toFixed(2),
+          "Tax ($)": tax.toFixed(2),
+          "Total ($)": (subtotal + tax - discount).toFixed(2),
+          "Notes": inv.notes ?? "",
+        };
+      });
+      const clientRows = clients.map(c => ({
+        "Name": c.name, "Company": c.company ?? "", "Email": c.email ?? "",
+        "Phone": c.phone ?? "", "Address": c.address ?? "", "ABN": c.abn ?? "", "Notes": c.notes ?? "",
+      }));
+      const profileData: Record<string, string> = {
+        "Business Name": profile.name, "Email": profile.email, "Phone": profile.phone,
+        "Address": profile.address, "ABN": profile.abn, "Currency": profile.currency,
+        "Bank Name": profile.bankName, "Account Name": profile.accountName, "Account No": profile.accountNo,
+      };
+      const url = await syncToGoogleSheets(providerToken, {
+        profile: profileData,
+        clients: clientRows,
+        invoices: invoiceRows,
+      });
+      setSheetUrl(url);
+      toast.success("Synced to Google Sheets!");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Sync failed";
+      if (msg.includes("401") || msg.includes("invalid_token")) {
+        toast.error("Google token expired — sign out and sign in with Google again");
+      } else {
+        toast.error(msg);
+      }
+    } finally {
+      setSheetSyncing(false);
+    }
+  };
+
+  const handleExportData = async () => {
+    try {
+      const XLSX = await import("xlsx");
+      const wb = XLSX.utils.book_new();
+
+      // Invoices sheet
+      const invoiceRows = invoices.map(inv => {
+        const subtotal = inv.lineItems.reduce((s, i) => s + i.quantity * i.rate, 0);
+        const tax = inv.lineItems.reduce((s, i) => s + i.quantity * i.rate * (i.taxPercent / 100), 0);
+        const discount = inv.lineItems.reduce((s, i) => s + i.quantity * i.rate * (i.discountPercent / 100), 0);
+        return {
+          "Invoice #": inv.invoiceNumber,
+          "Client": clients.find(c => c.id === inv.clientId)?.name ?? inv.clientId,
+          "Status": inv.status,
+          "Issue Date": inv.invoiceDate,
+          "Due Date": inv.dueDate,
+          "Subtotal ($)": subtotal.toFixed(2),
+          "Discount ($)": discount.toFixed(2),
+          "Tax ($)": tax.toFixed(2),
+          "Total ($)": (subtotal + tax - discount).toFixed(2),
+          "Notes": inv.notes ?? "",
+        };
+      });
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(invoiceRows), "Invoices");
+
+      // Clients sheet
+      const clientRows = clients.map(c => ({
+        "Name": c.name,
+        "Email": c.email ?? "",
+        "Phone": c.phone ?? "",
+        "Address": c.address ?? "",
+      }));
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(clientRows), "Clients");
+
+      // Profile sheet
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{
+        "Business Name": profile.name,
+        "Email": profile.email ?? "",
+        "Phone": profile.phone ?? "",
+        "Address": profile.address ?? "",
+        "ABN": profile.abn ?? "",
+        "Terms": profile.terms ?? "",
+      }]), "Business Profile");
+
+      XLSX.writeFile(wb, `awais-invoicing-backup-${new Date().toISOString().split("T")[0]}.xlsx`);
+      toast.success("Exported to Excel (.xlsx)");
+    } catch {
+      // Fallback to JSON
+      const blob = new Blob([JSON.stringify({ profile, clients, invoices }, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `awais-invoicing-backup-${new Date().toISOString().split("T")[0]}.json`;
+      a.click(); URL.revokeObjectURL(url);
+      toast.success("Data exported successfully (JSON)");
+    }
   };
 
   const handleImportData = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -358,9 +453,39 @@ export default function Settings() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Google Sheets Sync */}
+          <div className="rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-900 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Sheet className="h-4 w-4 text-green-600" />
+              <span className="text-sm font-semibold text-green-800 dark:text-green-300">Google Sheets Sync</span>
+              {sheetUrl && (
+                <a href={sheetUrl} target="_blank" rel="noopener noreferrer"
+                  className="ml-auto flex items-center gap-1 text-xs text-green-700 underline hover:text-green-900">
+                  Open Sheet <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+            </div>
+            <p className="text-xs text-green-700 dark:text-green-400">
+              {providerToken
+                ? "Syncs all invoices, clients and profile to a Google Sheet in your Drive — overwrites previous data."
+                : "Sign in with Google to enable automatic Sheets backup."}
+            </p>
+            <Button
+              variant="outline"
+              onClick={handleGoogleSheetsSync}
+              disabled={sheetSyncing || !providerToken}
+              className="border-green-400 text-green-700 hover:bg-green-100 dark:text-green-300"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${sheetSyncing ? "animate-spin" : ""}`} />
+              {sheetSyncing ? "Syncing…" : sheetUrl ? "Re-sync to Google Sheets" : "Sync to Google Sheets"}
+            </Button>
+          </div>
+
+          <Separator />
+
           <div className="flex flex-wrap gap-3">
             <Button variant="outline" onClick={handleExportData} data-testid="button-export-data">
-              <Download className="mr-2 h-4 w-4" /> Export Backup
+              <Download className="mr-2 h-4 w-4" /> Download JSON Backup
             </Button>
             <Button variant="outline" onClick={() => importInputRef.current?.click()} data-testid="button-import-data">
               <RefreshCw className="mr-2 h-4 w-4" /> Restore Backup
