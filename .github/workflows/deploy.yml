@@ -50,7 +50,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './artifacts/invoice-app/dist' # 👈 Points directly to the app build target
+          path: './artifacts/invoice-app/dist/Awaistechservices-invoincingapp/' # 👈 Points directly to the app build target
 
       - name: Deploy to GitHub Pages
         id: deployment
