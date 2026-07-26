@@ -46,14 +46,14 @@ jobs:
           BASE_PATH: /Awaistechservices-invoincingapp/
         run: pnpm --filter @workspace/invoice-app build
 
-      - name: Fix Directory Structure
+      - name: Prepare Deployment Folder
         run: |
           mkdir -p ./final_build
           if [ -d "./artifacts/invoice-app/dist/Awaistechservices-invoincingapp" ]; then
             cp -r ./artifacts/invoice-app/dist/Awaistechservices-invoincingapp/* ./final_build/
           else
             cp -r ./artifacts/invoice-app/dist/* ./final_build/
-          endif
+          fi
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
@@ -63,3 +63,4 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
