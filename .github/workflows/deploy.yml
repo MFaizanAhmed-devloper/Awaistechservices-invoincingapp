@@ -41,11 +41,12 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: pnpm build
-
+        
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './dist' # ⚠️ If your build files are inside an app folder, change this to './apps/your-app-name/dist'
+          path: './apps/web/dist' # 👈 Replace 'apps/web' with the exact inner folder where your project files live
+
 
       - name: Deploy to GitHub Pages
         id: deployment
