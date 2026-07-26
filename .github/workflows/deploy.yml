@@ -38,18 +38,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-            - name: Build site
+      - name: Build site
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           PORT: 5173
           BASE_PATH: /Awaistechservices-invoincingapp/
-        run: |
-          pnpm --filter @workspace/invoice-app build
-          echo "=== SHOWING COMPILED FILES ==="
-          ls -R ./artifacts/invoice-app/dist || echo "dist folder not found at root path"
-          mkdir -p ./public_deploy
-          cp -r ./artifacts/invoice-app/dist/* ./public_deploy/ || cp -r ./artifacts/invoice-app/dist/Awaistechservices-invoincingapp/* ./public_deploy/
+        run: pnpm --filter @workspace/invoice-app build && echo "=== SHOWING COMPILED FILES ===" && ls -R ./artifacts/invoice-app/dist && mkdir -p ./public_deploy && cp -r ./artifacts/invoice-app/dist/* ./public_deploy/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
