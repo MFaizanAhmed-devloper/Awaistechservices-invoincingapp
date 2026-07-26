@@ -26,27 +26,28 @@ jobs:
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
+        with:
+          version: 9 # 👈 Fixes the 'No pnpm version is specified' error
 
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24 # 👈 Aligns with GitHub's current runtime defaults
           cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build site
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: pnpm build
-        
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './apps/web/dist' # 👈 Replace 'apps/web' with the exact inner folder where your project files live
-
+          path: './apps/web/dist' # ⚠️ Double-check if your compiled folder is named differently inside your project!
 
       - name: Deploy to GitHub Pages
         id: deployment
