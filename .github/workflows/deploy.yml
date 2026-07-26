@@ -37,17 +37,19 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
+      # ... previous setup steps remain identical ...
 
       - name: Build site
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-        run: pnpm build
+          PORT: 5173 # 👈 Bypasses the sandbox port validation error
+        run: pnpm --filter @workspace/invoice-app build # 👈 Only builds your invoicing website
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './dist'
+          path: './artifacts/invoice-app/dist' # 👈 Points directly to the app build target
 
       - name: Deploy to GitHub Pages
         id: deployment
