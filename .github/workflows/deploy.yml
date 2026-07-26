@@ -46,19 +46,10 @@ jobs:
           BASE_PATH: /Awaistechservices-invoincingapp/
         run: pnpm --filter @workspace/invoice-app build
 
-      - name: Prepare Deployment Directory
-        run: |
-          mkdir -p ./public_deploy
-          if [ -d "./artifacts/invoice-app/dist/Awaistechservices-invoincingapp" ]; then
-            cp -r ./artifacts/invoice-app/dist/Awaistechservices-invoincingapp/* ./public_deploy/
-          else
-            cp -r ./artifacts/invoice-app/dist/* ./public_deploy/
-          fi
-
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './public_deploy'
+          path: './artifacts/invoice-app/dist' # 👈 Captures the base folder containing the compiled app subdirectories
 
       - name: Deploy to GitHub Pages
         id: deployment
