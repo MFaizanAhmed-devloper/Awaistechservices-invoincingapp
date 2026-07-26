@@ -46,21 +46,22 @@ jobs:
           BASE_PATH: /Awaistechservices-invoincingapp/
         run: pnpm --filter @workspace/invoice-app build
 
-      - name: Prepare Deployment Folder
+      - name: Prepare Staging Folder
         run: |
-          mkdir -p ./final_build
+          mkdir -p ./final_deploy
           if [ -d "./artifacts/invoice-app/dist/Awaistechservices-invoincingapp" ]; then
-            cp -r ./artifacts/invoice-app/dist/Awaistechservices-invoincingapp/* ./final_build/
+            echo "Detected nested base path folder structure"
+            cp -r ./artifacts/invoice-app/dist/Awaistechservices-invoincingapp/* ./final_deploy/
           else
-            cp -r ./artifacts/invoice-app/dist/* ./final_build/
+            echo "Detected flat distribution folder structure"
+            cp -r ./artifacts/invoice-app/dist/* ./final_deploy/
           fi
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './final_build'
+          path: './final_deploy'
 
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
