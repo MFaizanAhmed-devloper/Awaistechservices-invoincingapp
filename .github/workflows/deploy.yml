@@ -31,9 +31,18 @@ jobs:
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm --filter @workspace/invoice-app build
       
+      - name: Flatten Production Files
+        run: |
+          mkdir -p ./static_release
+          if [ -d "./artifacts/invoice-app/dist/Awaistechservices-invoincingapp" ]; then
+            cp -r ./artifacts/invoice-app/dist/Awaistechservices-invoincingapp/* ./static_release/
+          else
+            cp -r ./artifacts/invoice-app/dist/* ./static_release/
+          fi
+          
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: './artifacts/invoice-app/dist'
+          path: './static_release'
           
       - id: deployment
         uses: actions/deploy-pages@v4
