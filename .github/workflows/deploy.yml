@@ -46,10 +46,15 @@ jobs:
           BASE_PATH: /Awaistechservices-invoincingapp/
         run: pnpm --filter @workspace/invoice-app build
 
+      - name: Unpack Distribution Files
+        run: |
+          mkdir -p ./deploy_root
+          cp -r ./artifacts/invoice-app/dist/Awaistechservices-invoincingapp/* ./deploy_root/
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './artifacts/invoice-app/dist/Awaistechservices-invoincingapp' # 👈 Pointing explicitly inside Vite's target subfolder
+          path: './deploy_root'
 
       - name: Deploy to GitHub Pages
         id: deployment
