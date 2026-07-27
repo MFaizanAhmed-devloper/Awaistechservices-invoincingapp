@@ -1,30 +1,18 @@
-name: Deploy Workspace to Pages
-on:
-  push:
-    branches: ["main"]
-  workflow_dispatch:
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-env:
-  VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-  VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with: {version: 9}
-      - uses: actions/setup-node@v4
-        with: {node-version: 24, cache: "pnpm"}
-      - run: pnpm install --no-frozen-lockfile
-      - run: pnpm --filter @workspace/invoice-app build
-      - uses: actions/upload-pages-artifact@v3
-        with: {path: './artifacts/invoice-app/dist'}
-      - id: deployment
-        uses: actions/deploy-pages@v4
+import { defineConfig, loadEnv } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  
+  return {
+    plugins: [react()],
+    // This forces your files to link directly to your repository folder structure
+    base: env.BASE_PATH || '/Awaistechservices-invoincingapp/', 
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
+    },
+  };
+});
