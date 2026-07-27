@@ -35,10 +35,15 @@ jobs:
           PORT: 5173
           BASE_PATH: /Awaistechservices-invoincingapp/
         run: pnpm --filter @workspace/invoice-app build
-
-      - name: Force Patch Missing Logo Path
+      - name: Force Patch Missing Logo Path and CSS Paths
         run: |
+          # Logo path ko force patch karne ke liye
           find ./artifacts/invoice-app/dist -type f \( -name "*.js" -o -name "*.html" \) -exec sed -i 's|"/logo.png"|"./logo.png"|g' {} +
+          
+          # Stale asset styles injection fix karne ke liye
+          find ./artifacts/invoice-app/dist -type f -name "*.html" -exec sed -i 's|href="/assets/|href="./assets/|g' {} +
+          find ./artifacts/invoice-app/dist -type f -name "*.html" -exec sed -i 's|src="/assets/|src="./assets/|g' {} +
+
       
       - uses: actions/upload-pages-artifact@v3
         with:
