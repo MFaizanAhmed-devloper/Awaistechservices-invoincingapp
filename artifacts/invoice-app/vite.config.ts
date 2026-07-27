@@ -7,10 +7,11 @@ export default defineConfig(({ mode }) => {
   
   return {
     plugins: [react()],
-    base: env.BASE_PATH || '/', 
+    // This forces your files to link directly to your repository folder structure
+    base: env.BASE_PATH || '/Awaistechservices-invoincingapp/', 
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, './src'), // 👈 This maps the @ symbol straight to your src directory
+        '@': path.resolve(__dirname, './src'),
       },
     },
   };
