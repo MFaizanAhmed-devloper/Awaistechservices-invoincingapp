@@ -29,7 +29,16 @@ jobs:
           cache: "pnpm"
           
       - run: pnpm install --no-frozen-lockfile
-      - run: pnpm --filter @workspace/invoice-app build
+      
+      - name: Build Website Bundle
+        env:
+          PORT: 5173
+          BASE_PATH: /Awaistechservices-invoincingapp/
+        run: pnpm --filter @workspace/invoice-app build
+
+      - name: Force Patch Missing Logo Path
+        run: |
+          find ./artifacts/invoice-app/dist -type f \( -name "*.js" -o -name "*.html" \) -exec sed -i 's|"/logo.png"|"./logo.png"|g' {} +
       
       - uses: actions/upload-pages-artifact@v3
         with:
